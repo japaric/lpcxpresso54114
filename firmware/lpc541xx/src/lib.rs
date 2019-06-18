@@ -360,101 +360,100 @@ pub struct ExceptionFrame {
 }
 
 #[allow(non_camel_case_types)]
-pub enum Interrupt {
-    WDT,
-    DMA,
-    GINT0,
-    GINT1,
-    PIN_INT0,
-    PIN_INT1,
-    PIN_INT2,
-    PIN_INT3,
-    UTICK,
-    MRT,
-    CTIMER0,
-    CTIMER1,
-    SCT0,
-    CTIMER3,
-    Flexcomm0,
-    Flexcomm1,
-    Flexcomm2,
-    Flexcomm3,
-    Flexcomm4,
-    Flexcomm5,
-    Flexcomm6,
-    Flexcomm7,
-    ADC0_SEQA,
-    ADC0_SEQB,
-    ADC0_THCMP,
-    DMIC,
-    HWVAD,
-    USB_WAKEUP,
-    USB,
-    RTC,
-    MAILBOX,
+#[derive(Clone, Copy)]
+#[repr(u8)]
+pub enum Interrupt_0 {
+    WDT = 0,
+    DMA = 1,
+    GINT0 = 2,
+    GINT1 = 3,
+    PIN_INT0 = 4,
+    PIN_INT1 = 5,
+    PIN_INT2 = 6,
+    PIN_INT3 = 7,
+    UTICK = 8,
+    MRT = 9,
+    CTIMER0 = 10,
+    CTIMER1 = 11,
+    SCT0 = 12,
+    CTIMER3 = 13,
+    Flexcomm0 = 14,
+    Flexcomm1 = 15,
+    Flexcomm2 = 16,
+    Flexcomm3 = 17,
+    Flexcomm4 = 18,
+    Flexcomm5 = 19,
+    Flexcomm6 = 20,
+    Flexcomm7 = 21,
+    ADC0_SEQA = 22,
+    ADC0_SEQB = 23,
+    ADC0_THCMP = 24,
+    DMIC = 25,
+    HWVAD = 26,
+    USB_WAKEUP = 27,
+    USB = 28,
+    RTC = 29,
+    MAILBOX = 31,
     #[cfg(master)]
-    PIN_INT4,
+    PIN_INT4 = 32,
     #[cfg(master)]
-    PIN_INT5,
+    PIN_INT5 = 33,
     #[cfg(master)]
-    PIN_INT6,
+    PIN_INT6 = 34,
     #[cfg(master)]
-    PIN_INT7,
+    PIN_INT7 = 35,
     #[cfg(master)]
-    CTIMER2,
+    CTIMER2 = 36,
     #[cfg(master)]
-    CTIMER4,
+    CTIMER4 = 37,
 }
 
-unsafe impl Nr for Interrupt {
+unsafe impl Nr for Interrupt_0 {
     fn nr(&self) -> u8 {
-        use Interrupt::*;
+        *self as u8
+    }
+}
 
-        match self {
-            WDT => 0,
-            DMA => 1,
-            GINT0 => 2,
-            GINT1 => 3,
-            PIN_INT0 => 4,
-            PIN_INT1 => 5,
-            PIN_INT2 => 6,
-            PIN_INT3 => 7,
-            UTICK => 8,
-            MRT => 9,
-            CTIMER0 => 10,
-            CTIMER1 => 11,
-            SCT0 => 12,
-            CTIMER3 => 13,
-            Flexcomm0 => 14,
-            Flexcomm1 => 15,
-            Flexcomm2 => 16,
-            Flexcomm3 => 17,
-            Flexcomm4 => 18,
-            Flexcomm5 => 19,
-            Flexcomm6 => 20,
-            Flexcomm7 => 21,
-            ADC0_SEQA => 22,
-            ADC0_SEQB => 23,
-            ADC0_THCMP => 24,
-            DMIC => 25,
-            HWVAD => 26,
-            USB_WAKEUP => 27,
-            USB => 28,
-            RTC => 29,
-            MAILBOX => 31,
-            #[cfg(master)]
-            PIN_INT4 => 32,
-            #[cfg(master)]
-            PIN_INT5 => 33,
-            #[cfg(master)]
-            PIN_INT6 => 34,
-            #[cfg(master)]
-            PIN_INT7 => 35,
-            #[cfg(master)]
-            CTIMER2 => 36,
-            #[cfg(master)]
-            CTIMER4 => 37,
-        }
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+#[repr(u8)]
+pub enum Interrupt_1 {
+    WDT = 0,
+    DMA = 1,
+    GINT0 = 2,
+    GINT1 = 3,
+    PIN_INT0 = 4,
+    PIN_INT1 = 5,
+    PIN_INT2 = 6,
+    PIN_INT3 = 7,
+    UTICK = 8,
+    MRT = 9,
+    CTIMER0 = 10,
+    CTIMER1 = 11,
+    SCT0 = 12,
+    CTIMER3 = 13,
+    Flexcomm0 = 14,
+    Flexcomm1 = 15,
+    Flexcomm2 = 16,
+    Flexcomm3 = 17,
+    Flexcomm4 = 18,
+    Flexcomm5 = 19,
+    Flexcomm6 = 20,
+    Flexcomm7 = 21,
+    ADC0_SEQA = 22,
+    ADC0_SEQB = 23,
+    ADC0_THCMP = 24,
+    DMIC = 25,
+    HWVAD = 26,
+    USB_WAKEUP = 27,
+    USB = 28,
+    RTC = 29,
+    MAILBOX = 31,
+}
+
+unsafe impl Nr for Interrupt_1 {
+    fn nr(&self) -> u8 {
+        *self as u8
     }
 }
 
