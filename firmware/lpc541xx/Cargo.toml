@@ -10,7 +10,7 @@ panic-halt = "0.2.0"
 r0 = "0.2.2"
 
 [dependencies.cortex-m-rtfm]
-branch = "heterogeneus"
+branch = "heterogeneous"
 features = ["heterogeneous"]
 git = "https://github.com/japaric/cortex-m-rtfm"
 
