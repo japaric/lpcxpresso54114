@@ -10,7 +10,7 @@ use lpc541xx::Duration;
 use lpc541xx::Instant;
 use panic_halt as _;
 
-const PERIOD: u32 = 6_000_000; // cycles or about half a second
+const PERIOD: u32 = 6_000_000; // CPU clock cycles or about half a second
 
 #[rtfm::app(cores = 2, device = lpc541xx, monotonic = lpc541xx::CTIMER0)]
 const APP: () = {
@@ -23,9 +23,7 @@ const APP: () = {
         iprintln!(&mut c.core.ITM.stim[0], "[0] init");
 
         // run this task in half a second from now
-        c.schedule
-            .ping(c.start + Duration::from_cycles(PERIOD), 0)
-            .ok();
+        let _ = c.schedule.ping(c.start + Duration::from_cycles(PERIOD), 0);
 
         init::LateResources { ITM: c.core.ITM }
     }
@@ -33,20 +31,27 @@ const APP: () = {
     #[task(core = 0, resources = [ITM], schedule = [ping])]
     fn pong(c: pong::Context, x: u32) {
         let now = Instant::now();
+        let scheduled = c.scheduled;
 
-        iprintln!(&mut c.resources.ITM.stim[0], "[0] pong({}) @ {:?}", x, now);
+        iprintln!(
+            &mut c.resources.ITM.stim[0],
+            "[0] pong({}) scheduled @ {:?} ran @ {:?}",
+            x,
+            scheduled,
+            now
+        );
 
-        c.schedule
-            .ping(c.scheduled + Duration::from_cycles(PERIOD), x + 1)
-            .ok();
+        let _ = c
+            .schedule
+            .ping(scheduled + Duration::from_cycles(PERIOD), x + 1);
     }
 
     #[task(core = 1, schedule = [pong])]
     fn ping(c: ping::Context, x: u32) {
         if x < 5 {
-            c.schedule
-                .pong(c.scheduled + Duration::from_cycles(PERIOD), x + 1)
-                .ok();
+            let _ = c
+                .schedule
+                .pong(c.scheduled + Duration::from_cycles(PERIOD), x + 1);
         }
     }
 
