@@ -7,25 +7,43 @@ _stack_top = ORIGIN(SRAM1) + LENGTH(SRAM1);
 
 SECTIONS
 {
+  .pointers :
+  {
+    LONG(ADDR(.vectors));
+    LONG(ADDR(.data) + SIZEOF(.data));
+  } > FLASH1
+
   .vectors :
   {
     LONG(_stack_top);
     LONG(start);
 
     KEEP(*(.vectors));
-  } > FLASH1
+  } > SRAM1 AT > FLASH1
 
   .text : ALIGN(4)
   {
     *(.text .text.*);
-  } > FLASH1
+
+    . = ALIGN(4);
+  } > SRAM1 AT > FLASH1
 
   .rodata : ALIGN(4)
   {
     *(.rodata .rodata.*);
 
     . = ALIGN(4);
-  } > FLASH1
+  } > SRAM1 AT > FLASH1
+
+  .data : ALIGN(4)
+  {
+    *(.text .text.*);
+    . = ALIGN(4);
+
+    *(.data .data.*);
+
+    . = ALIGN(4);
+  } > SRAM1 AT > FLASH1
 
   .bss : ALIGN(4)
   {
@@ -36,17 +54,6 @@ SECTIONS
 
   _sbss = ADDR(.bss);
   _ebss = ADDR(.bss) + SIZEOF(.bss);
-
-  .data : ALIGN(4)
-  {
-    *(.data .data.*);
-
-    . = ALIGN(4);
-  } > SRAM1 AT > FLASH1
-
-  _sdata = ADDR(.data);
-  _edata = ADDR(.data) + SIZEOF(.data);
-  _sidata = LOADADDR(.data);
 
   .shared (NOLOAD) : ALIGN(4)
   {
@@ -107,3 +114,20 @@ PROVIDE(MAILBOX = DefaultHandler);
 /* PROVIDE(PIN_INT7 = DefaultHandler); */
 /* PROVIDE(CTIMER2 = DefaultHandler); */
 /* PROVIDE(CTIMER4 = DefaultHandler); */
+
+ASSERT(ADDR(.pointers) == ORIGIN(FLASH1), ".pointers is not positioned where expected");
+
+/* check that all sections that need to be initialized are contiguous */
+ASSERT(ADDR(.vectors) + SIZEOF(.vectors) == ADDR(.text),
+".vectors and .text are not contiguous");
+ASSERT(ADDR(.text) + SIZEOF(.text) == ADDR(.rodata),
+".text and .rodata are not contiguous");
+ASSERT(ADDR(.rodata) + SIZEOF(.rodata) == ADDR(.data),
+".rodata and .data are not contiguous");
+
+ASSERT(LOADADDR(.vectors) + SIZEOF(.vectors) == LOADADDR(.text),
+".vectors and .text are not contiguous");
+ASSERT(LOADADDR(.text) + SIZEOF(.text) == LOADADDR(.rodata),
+".text and .rodata are not contiguous");
+ASSERT(LOADADDR(.rodata) + SIZEOF(.rodata) == LOADADDR(.data),
+".rodata and .data are not contiguous");

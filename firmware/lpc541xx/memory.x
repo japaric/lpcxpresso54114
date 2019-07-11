@@ -2,9 +2,9 @@ MEMORY
 {
   /* NOTE FLASH is connected to a single bus */
   /* for core #0 */
-  FLASH0 : ORIGIN = 0x00000000, LENGTH = 128K
-  /* for core #1 */
-  FLASH1 : ORIGIN = 0x00020000, LENGTH = 128K
+  FLASH0 : ORIGIN = 0x00000000, LENGTH = 224K
+  /* last 32KB sector for core #1 */
+  FLASH1 : ORIGIN = 0x00038000, LENGTH = 32K
 
   /* NOTE each region is connected a different AHB / APB bus */
   /* for core #0 */

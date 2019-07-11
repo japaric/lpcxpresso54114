@@ -14,8 +14,8 @@ const DELAY: u32 = 6_000_000; // CPU clock cycles or about half a second
 
 #[rtfm::app(cores = 2, device = lpc541xx, monotonic = lpc541xx::CTIMER0)]
 const APP: () = {
-    extern "C" {
-        static mut ITM: ITM;
+    struct Resources {
+        itm: ITM,
     }
 
     #[init(core = 0, schedule = [ping])]
@@ -25,16 +25,16 @@ const APP: () = {
         // run this task in half a second from now
         let _ = c.schedule.ping(c.start + Duration::from_cycles(DELAY), 0);
 
-        init::LateResources { ITM: c.core.ITM }
+        init::LateResources { itm: c.core.ITM }
     }
 
-    #[task(core = 0, resources = [ITM], schedule = [ping])]
+    #[task(core = 0, resources = [itm], schedule = [ping])]
     fn pong(c: pong::Context, x: u32) {
         let now = Instant::now();
         let scheduled = c.scheduled;
 
         iprintln!(
-            &mut c.resources.ITM.stim[0],
+            &mut c.resources.itm.stim[0],
             "[0] pong({}) scheduled @ {:?} ran @ {:?}",
             x,
             scheduled,

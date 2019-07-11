@@ -7,8 +7,8 @@ use panic_halt as _;
 // heterogeneous dual core device: Cortex-M4F (#0) + Cortex-M0+ (#1)
 #[rtfm::app(cores = 2, device = lpc541xx)]
 const APP: () = {
-    extern "C" {
-        static mut ITM: ITM;
+    struct Resources {
+        itm: ITM,
     }
 
     #[init(core = 0, spawn = [ping])]
@@ -18,12 +18,12 @@ const APP: () = {
         // cross core message passing
         let _ = c.spawn.ping(0);
 
-        init::LateResources { ITM: c.core.ITM }
+        init::LateResources { itm: c.core.ITM }
     }
 
-    #[task(core = 0, resources = [ITM], spawn = [ping])]
+    #[task(core = 0, resources = [itm], spawn = [ping])]
     fn pong(c: pong::Context, x: u32) {
-        iprintln!(&mut c.resources.ITM.stim[0], "[0] pong({})", x);
+        iprintln!(&mut c.resources.itm.stim[0], "[0] pong({})", x);
 
         // cross core message passing
         let _ = c.spawn.ping(x + 1);

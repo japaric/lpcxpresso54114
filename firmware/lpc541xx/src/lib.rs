@@ -11,7 +11,90 @@ use core::{
 };
 
 use bare_metal::Nr;
-use rtfm::Monotonic;
+use rtfm::{Fraction, Monotonic, MultiCore};
+
+const GPIO_BASE: usize = 0x4008_C000;
+const GPIO_SET0: *mut u32 = (GPIO_BASE + 0x2200) as *mut u32;
+const GPIO_SET1: *mut u32 = (GPIO_BASE + 0x2204) as *mut u32;
+const GPIO_CLR0: *mut u32 = (GPIO_BASE + 0x2280) as *mut u32;
+const GPIO_CLR1: *mut u32 = (GPIO_BASE + 0x2284) as *mut u32;
+const GPIO_NOT0: *mut u32 = (GPIO_BASE + 0x2300) as *mut u32;
+const GPIO_NOT1: *mut u32 = (GPIO_BASE + 0x2304) as *mut u32;
+
+// P0_29
+pub struct RED;
+
+impl RED {
+    const OFFSET: u8 = 29;
+
+    pub fn on(&self) {
+        unsafe {
+            GPIO_CLR0.write_volatile(1 << Self::OFFSET);
+        }
+    }
+
+    pub fn off(&self) {
+        unsafe {
+            GPIO_SET0.write_volatile(1 << Self::OFFSET);
+        }
+    }
+
+    pub fn toggle(&self) {
+        unsafe {
+            GPIO_NOT0.write_volatile(1 << Self::OFFSET);
+        }
+    }
+}
+
+// P1_10
+pub struct GREEN;
+
+impl GREEN {
+    const OFFSET: u8 = 10;
+
+    pub fn on(&self) {
+        unsafe {
+            GPIO_CLR1.write_volatile(1 << Self::OFFSET);
+        }
+    }
+
+    pub fn off(&self) {
+        unsafe {
+            GPIO_SET1.write_volatile(1 << Self::OFFSET);
+        }
+    }
+
+    pub fn toggle(&self) {
+        unsafe {
+            GPIO_NOT1.write_volatile(1 << Self::OFFSET);
+        }
+    }
+}
+
+// P1_9
+pub struct BLUE;
+
+impl BLUE {
+    const OFFSET: u8 = 9;
+
+    pub fn on(&self) {
+        unsafe {
+            GPIO_CLR1.write_volatile(1 << Self::OFFSET);
+        }
+    }
+
+    pub fn off(&self) {
+        unsafe {
+            GPIO_SET1.write_volatile(1 << Self::OFFSET);
+        }
+    }
+
+    pub fn toggle(&self) {
+        unsafe {
+            GPIO_NOT1.write_volatile(1 << Self::OFFSET);
+        }
+    }
+}
 
 #[cfg(master)]
 pub const NVIC_PRIO_BITS: u8 = 3;
@@ -28,11 +111,14 @@ const CTIMER0_BASE: usize = 0x40008000;
 const CTIMER0_TCR: *mut u32 = (CTIMER0_BASE + 0x4) as *mut u32;
 const CTIMER0_TC: *const u32 = (CTIMER0_BASE + 0x8) as *const u32;
 
-unsafe impl Monotonic for CTIMER0 {
+impl Monotonic for CTIMER0 {
     type Instant = Instant;
 
-    fn ratio() -> u32 {
-        1
+    fn ratio() -> Fraction {
+        Fraction {
+            numerator: 1,
+            denominator: 1,
+        }
     }
 
     fn now() -> Instant {
@@ -49,9 +135,11 @@ unsafe impl Monotonic for CTIMER0 {
     }
 }
 
+impl MultiCore for CTIMER0 {}
+
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Instant {
-    inner: i32,
+    pub inner: i32,
 }
 
 impl Instant {
@@ -216,10 +304,6 @@ pub unsafe extern "C" fn _start() -> ! {
 
 #[no_mangle]
 pub unsafe extern "C" fn start() -> ! {
-    // Start of core #1 (slave) vector table
-    // XXX It'd be best to get this from the linker script
-    const SLAVE_VECTORS: *const u32 = 0x0002_0000 as *const u32;
-
     match () {
         #[cfg(master)]
         () => {
@@ -229,11 +313,17 @@ pub unsafe extern "C" fn start() -> ! {
                 static _sishared: u32;
             }
 
+            const SYSCON_FLASHCFG: *mut u32 = 0x4000_0400 as *mut u32;
+
+            // reset Flash access settings to their reset value
+            SYSCON_FLASHCFG.write_volatile((0x2 << 0) | (0x2 << 2) | (0x1 << 4));
+
             const SYSCON_AHBCLKCTRLSET0: *mut u32 = 0x4000_0220 as *mut u32;
 
-            // enable SRAM1, SRAM2 and MAILBOX
+            // enable SRAM1 (3), SRAM2 (4), GPIO0 (14), GPIO1 (14) and MAILBOX (26)
             // (SRAM1 should be enabled on boot / reset according to the data sheet but it isn't)
-            SYSCON_AHBCLKCTRLSET0.write_volatile((1 << 26) | (1 << 4) | (1 << 3));
+            SYSCON_AHBCLKCTRLSET0
+                .write_volatile((1 << 26) | (1 << 15) | (1 << 14) | (1 << 4) | (1 << 3));
 
             const SYSCON_AHBCLKCTRLSET1: *mut u32 = 0x4000_0224 as *mut u32;
 
@@ -243,22 +333,44 @@ pub unsafe extern "C" fn start() -> ! {
             // held the CTIMER0 counter in reset
             CTIMER0_TCR.write_volatile(0b10);
 
+            // configure LED pins
+            const GPIO_DIRSET0: *mut u32 = (GPIO_BASE + 0x2380) as *mut u32;
+            const GPIO_DIRSET1: *mut u32 = (GPIO_BASE + 0x2384) as *mut u32;
+
+            let mask = 1 << RED::OFFSET;
+            GPIO_SET0.write_volatile(mask); // set high
+            GPIO_DIRSET0.write_volatile(mask); // set as outputs
+
+            let mask = (1 << GREEN::OFFSET) | (1 << BLUE::OFFSET);
+            GPIO_SET1.write_volatile(mask); // set high
+            GPIO_DIRSET1.write_volatile(mask); // set as outputs
+
             // SRAM2 must be enabled before the `.shared` section is initialized
             atomic::compiler_fence(Ordering::SeqCst);
 
+            // initialize slave memory
+            const POINTERS: *const [usize; 2] = 0x0003_8000 as *const _;
+
+            let pointers = POINTERS.read();
+
+            let _sslave = pointers[0] as *mut u32;
+            let _eslave = pointers[1] as *mut u32;
+            let _sislave = POINTERS.add(1) as *const u32;
+            r0::init_data(_sslave, _eslave, _sislave);
+
             // initialize `.shared` variables
-            // this is *not* a volatile operation so compiler fences are required
             r0::init_data(&mut _sshared, &mut _eshared, &_sishared);
 
-            // ensure that the slave is only active *after* shared variables have been initialized
+            // ensure that the slave is only active *after* shared variables and its memory have
+            // been initialized
             atomic::compiler_fence(Ordering::SeqCst);
 
             const SYSCON_CPBOOT: *mut u32 = 0x4000_0804 as *mut u32;
             const SYSCON_CPSTACK: *mut u32 = 0x4000_0808 as *mut u32;
             const SYSCON_CPUCTRL: *mut u32 = 0x4000_0800 as *mut u32;
 
-            SYSCON_CPSTACK.write_volatile(SLAVE_VECTORS.read());
-            SYSCON_CPBOOT.write_volatile(SLAVE_VECTORS.add(1).read());
+            SYSCON_CPSTACK.write_volatile(_sslave.read());
+            SYSCON_CPBOOT.write_volatile(_sslave.add(1).read());
 
             // enable the M0+ clock but hold the core in reset
             SYSCON_CPUCTRL.write_volatile(0xc0c4_806d);
@@ -273,7 +385,7 @@ pub unsafe extern "C" fn start() -> ! {
 
             // after reset the slave uses 0x0 as the start of the vector table
             // this needs to be updated to use the right address
-            SCB_VTOR.write_volatile(SLAVE_VECTORS as u32);
+            SCB_VTOR.write_volatile(start as u32 & !(0xffff));
         }
     }
 
@@ -285,7 +397,10 @@ pub unsafe extern "C" fn start() -> ! {
     extern "C" {
         static mut _sbss: u32;
         static mut _ebss: u32;
+    }
 
+    #[cfg(master)]
+    extern "C" {
         static mut _sdata: u32;
         static mut _edata: u32;
         static _sidata: u32;
@@ -293,6 +408,7 @@ pub unsafe extern "C" fn start() -> ! {
 
     // initialize .bss and .data
     r0::zero_bss(&mut _sbss, &mut _ebss);
+    #[cfg(master)]
     r0::init_data(&mut _sdata, &mut _edata, &_sidata);
 
     // do not run `main` before the `static` variables have been initialized
